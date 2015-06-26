@@ -73,6 +73,59 @@ ExtJS 的工作原理，准确理解以上代码是极为必要的。更多 Java
 面向对象编程的知识，我推荐你阅读
 [MDN文档](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Introduction_to_Object-Oriented_JavaScript)
 
+接下来构造一个 `Geek` 实例并调用其方法：
+
+```js
+var lisi = new Geek();
+lisi.setName('LiSi');
+lisi.lang = 'JavaScript';
+
+if (lisi.isProgrammer && lisi.niubility) {
+    lisi.program();
+    console.log(lisi.name + ' can ' + lisi.superSkill());
+}
+```
+
+控制台将打印出：
+
+```sh
+LiSi codes in JavaScript.
+LiSi can kill himself.
+```
+
+## ExtJS的方式
+
+从上一小节可以看出，传统的面向对象编程方式稍有些复杂，而且代码较为分散，
+继承关系也不直观。ExtJS 为了克服此问题，在 4.0+ 版本中引入了全新的类系统。
+让我们先来看看如何用 ExtJS 的方式实现上一节的例子：
+
+```js
+
+Ext.define('Programmer', {
+
+    isProgrammer: true,
+
+    constructor: function () {
+        this.lang = 'java';
+        this.name = '';
+    },
+
+    setName: function (name) {
+        this.name = name;
+    },
+
+    program: function () {
+        console.log(this.name + ' codes in ' + this.lang + '.');
+    }
+    
+});
+
+var zhangsan = Ext.create('Programmer');
+zhangsan.setName('ZhangSan');
+if (zhangsan.isProgrammer) {
+    zhangsan.program();
+}
+```
 
 
 
