@@ -1,3 +1,3 @@
-# ExtJS Book
+# ExtJS核心概念
 
-ExtJS 概念讲解
+ExtJS 核心概念讲解
