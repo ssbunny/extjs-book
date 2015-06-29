@@ -196,7 +196,7 @@ var lisi = new JavaScripter('ExtJS');
 console.log(lisi.skill()); // I'm coding in JavaScript.I am good at ExtJS. 
 ```
 
-继承使用 `extend` 属性实现，在构造器或方法中，通过 `this.callParent` 可以调用父类方法。
+继承使用 `extend` 属性实现，在构造器或方法中，通过 `this.callParent()` 可以调用父类方法。
 
 ### 3.Config
 
@@ -230,6 +230,187 @@ console.dir(zhangsan);
 
 ![classsystem_01](img/classsystem_01.png)
 
+需要*注意*的是，如果不是继承自现有组件，而是自己定义新类，
+需要在 `constructor` 中明确调用 `initConfig()` 方法。 
 
+ExtJS 框架并没有对 `isXxx` 、`hasXxx` 方法做特殊处理，
+即示例中默认并**不存在** isGeek() 方法，可以访问 `isGee` 属性获得其值。
+然而，`isXxx` 属性通常更适合作为类的成员对象(属性)，不需放入config中。
 
+对于 `config` 中的属性 `foo`, 框架还会为其自动生成 `applyFoo()`
+和 `updateFoo()` 方法，这两个方法分别作为 `setFoo()` 的前置和后置方法被调用，
+具体使用说明可参考相应API文档。 
+
+### 4.Statics 和 InheritableStatics 
+
+```js
+Ext.define('Computer', {
+    statics: {
+        factory: function(brand) {
+            // `this` 指向类本身
+            return new this(brand);
+        }
+    },
+    constructor: function(brand) {
+        this.brand = brand || '';
+    }，
+    foo: function () {
+        // `this.statics()` 可以引用到当前类
+    }
+});
+
+var thinkComputer = Computer.factory('Thinkpad');
+console.log(thinkComputer.brand); // Thinkpad 
+```
+
+关于静态方法，你需要知道：
+1. 在statics方法中，`this` 指向类本身;
+2. 在其它成员方法中，`this.statics()` 可以引用到当前类；
+2. statics对象中的属性/方法，不会被 `extend` 或 `mixin`，如有此需求，可使用 `InheritableStatics` .
+
+### 5.Mixins
+
+ExtJS 提供了掺和模式的实现：
+
+```js
+Ext.define('CanSing', {
+    sing: function() {
+        console.log("I'm on the highway to hell...");
+    }
+});
+
+Ext.define('Musician', {
+    mixins: ['CanSing'],
+    eat: function() {
+        console.log("Everyone is able to eat.");
+    }
+})
+
+new Musician().eat(); // Everyone is able to eat.
+new Musician().sing(); // I'm on the highway to hell...
+```
+
+你应该通过掺和模式合理的拆分一些较大的类，将其中可共用的行为方法拆分出去。
+例如你在设计一个Web界面模板类，它可以保存新数据，也可以删除已有数据，
+另外还有可能会包含数据修改、数据导入导出、查询检索等等一系列操作。
+你当然可以设计一个大而全的类来实现所有功能，如果某一特殊场景中不需要
+“导入导出”功能则通过子类将对应功能入口“弱化”掉。这个设计很糟糕，
+维护这个大类会让人疯狂，尤其面对新的功能扩展时。
+聪明一些的办法则可以通过继承层级划分，在基类中实现“基本功能”并在子类中扩展其它功能。
+然而我们的例子中如何划分子类呢？它有太多可能的功能组合。你肯定已经想到，
+掺和模式可以解决此类问题。
+
+`mixins` 背后的思想即是通过**聚合**而非继承的方式为某类型扩展行为能力。
+Java 开发人员理应对此极为熟悉。使用 Golang 的开发人员可以将其理解为“结构体嵌入”。
+
+下面展示一个稍复杂的例子，更多的用法希望你通过API文档自行学习：
+
+```js
+Ext.define('Jqueryable', {
+    skill: 'jQuery'
+});
+
+Ext.define('Extjsable', {
+    skill: function () {
+        return 'ExtJS';
+    }
+});
+
+Ext.define('Seajsable', {
+    cmd: 'Seajs'
+});
+
+Ext.define('JavaScripter', {
+    extend: 'Programmer',
+    constructor: function (skilled) {
+        this.skilled = skilled || '';
+        this.callParent(['JavaScript']);
+    },
+    
+    mixins: {
+        writejQuery: 'Jqueryable',
+        writeExtjs: 'Extjsable',
+        writeSeajs: 'Seajsable'
+    },
+
+    skill: function () {
+        return [
+            this.code(),
+            'I am good at ',
+            this.mixins.writejQuery.skill,
+            ',',
+            this.mixins.writeExtjs.skill(),
+            ',',
+            this.mixins.writeSeajs.cmd,
+            '.'
+        ].join('');
+    }
+});
+
+var lisi = new JavaScripter('ExtJS');
+console.log(lisi.skill()); // I'm coding in JavaScript.I am good at jQuery,ExtJS,Seajs.
+```
+
+### 6.保留私有作用域空间
+
+接下来要展示的代码你应该一看就明白它的用意为何，如下：
+
+```js
+Ext.define('Foo', function () {
+    // nested scope
+    return {
+        // properties
+    }
+});
+```
+
+类似的代码结构在使用 ExtJS 之前，你已经无数次使用了。通过给
+`Ext.define` 第二个参数传函数参数的方式，可以在函数中保留私有作用域空间。
+如果返回对象的属性中包含override等需要预处理的类，必须将上面的函数改为立即执行的方式：
+
+```js
+Ext.define('Foo', function () {
+    // nested scope
+    return {
+        override: 'Ext.Component',
+        // properties
+    }
+}()); 
+```
+
+唯一需要再次好心叮嘱你的是，使用这种方式一定要注意保证函数造成的闭包空间中，
+引用到的任何变量一定要能够在合适的时机被GC处理。
+
+来看一个该用法的示例(注意函数中传入了参数)：
+ 
+```js
+Ext.define('Bar', function (bar) {
+    return {
+        statics: {
+            id: 0,
+            nextId: function () {
+                return ++bar.id;
+            }
+        },
+        // properties
+    };
+});
+
+console.log(Bar.nextId()); // 1
+console.log(Bar.nextId()); // 2 
+```
+
+### 7.定义匿名类
+
+可能没太大用处，`Ext.define` 可以用来定义匿名类，将类名设为 `null` 即可：
+
+```js
+var Foo = Ext.define(null, {
+    constructor: function () {
+        this.name = '[ anonymous class ]';
+    }
+});
+
+console.log(new Foo().name); // [ anonymous class ] 
+```
 
