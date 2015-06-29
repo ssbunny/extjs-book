@@ -459,7 +459,6 @@ Ext.define('MyLargeClass.part1', {
 });
 
 // 另一部分方法放到part2中
-
 Ext.define('MyLargeClass.part2', {
     override: 'MyLargeClass',
     sing: function () {
@@ -479,7 +478,7 @@ largeClass.code(); // ZhangSan is coding in java!
 
 实际应用时，当一个类方法特别特别特别多时(巨大的类)，可以进行合理拆分。
 同时，结合动态类加载机制，将不同的部分part1、part2放在不同的JS源文件中，
-主类定义中使用requires引用所有的部分。
+主类定义中使用 `requires` 引用所有的部分。
 
 `Ext.define` 还提供了定义别名、动态加载、定义向下兼容的类名等多种功能用法，
 不再一一叙述。
