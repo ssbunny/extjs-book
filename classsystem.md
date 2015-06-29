@@ -71,7 +71,7 @@ Geek.prototype.superSkill = function () {
 的相关知识。虽然 ExtJS 为我们隐藏了诸多实现细节，但若想有所提高并了解
 ExtJS 的工作原理，准确理解以上代码是极为必要的。更多 JavaScript
 面向对象编程的知识，我推荐你阅读
-[MDN文档](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Introduction_to_Object-Oriented_JavaScript)
+[MDN文档](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Introduction_to_Object-Oriented_JavaScript) 。
 
 接下来构造一个 `Geek` 实例并调用其方法：
 
@@ -88,7 +88,7 @@ if (lisi.isProgrammer && lisi.niubility) {
 
 控制台将打印出：
 
-```sh
+```
 LiSi codes in JavaScript.
 LiSi can kill himself.
 ```
@@ -100,24 +100,18 @@ LiSi can kill himself.
 让我们先来看看如何用 ExtJS 的方式实现上一节的例子：
 
 ```js
-
 Ext.define('Programmer', {
-
     isProgrammer: true,
-
     constructor: function () {
         this.lang = 'java';
         this.name = '';
     },
-
     setName: function (name) {
         this.name = name;
     },
-
     program: function () {
         console.log(this.name + ' codes in ' + this.lang + '.');
     }
-    
 });
 
 var zhangsan = Ext.create('Programmer');
@@ -127,7 +121,114 @@ if (zhangsan.isProgrammer) {
 }
 ```
 
+实现继承关系也非常简单直观，来看子类的代码：
 
+```js
+Ext.define('Geek', {
+    extend: 'Programmer',
+    constructor: function () {
+        this.callParent();
+        this.niubility = true;
+    },
+    superSkill: function () {
+        return 'kill himself.';
+    }
+});
+
+var lisi = Ext.create('Geek');
+lisi.setName('LiSi');
+lisi.lang = 'JavaScript';
+
+if (lisi.isProgrammer && lisi.niubility) {
+    lisi.program();
+    console.log(lisi.name + ' can ' + lisi.superSkill());
+}
+```
+
+可以看出，ExtJS 类系统的核心即为**Ext.define**函数，熟悉 Java
+的开发人员可以将其理解为 ExtJS 的定义类的语法。继承关系则可以通过
+extend 属性指定。
+
+从 4.0+ 版本开始，ExtJS 整个框架都基于 `Ext.define` 来构建，
+除了继承以外，该方法还实现了其它诸多类系统特性，
+让我们通过代码的方式展示一下 `Ext.define` 的用法。
+
+## Ext.define的用法
+
+### 1.定义一个类
+
+正如前面看到的，`Ext.define` 可以用来定义一个类：
+
+```js
+Ext.define('Programmer', {
+    constructor: function (language) {
+        if (language) {
+            this.language = language;
+        }
+    },
+    language: '[default]',
+    code: function () {
+        return ('I\'m coding in ' + this.language + '.');
+    }
+});
+
+var zhangsan = new Programmer('Java');
+console.log(zhangsan.code()); // I'm coding in Java. 
+```
+
+### 2.继承
+
+还有继承：
+
+```js
+Ext.define('JavaScripter', {
+    extend: 'Programmer',
+    constructor: function (skilled) {
+        this.skilled = skilled || '';
+        this.callParent(['JavaScript']);
+    },
+    skill: function () {
+        return (this.code() + 'I am good at ' + this.skilled + '.');
+    }
+});
+
+var lisi = new JavaScripter('ExtJS');
+console.log(lisi.skill()); // I'm coding in JavaScript.I am good at ExtJS. 
+```
+
+继承使用 `extend` 属性实现，在构造器或方法中，通过 `this.callParent` 可以调用父类方法。
+
+### 3.Config
+
+定义在 `config` 中的属性会自动生成 getters/setters： 
+
+```js
+Ext.define('Programmer', {
+    constructor: function (config) {
+        this.initConfig(config);
+    },
+
+    config: {
+        language: '',
+        isGeek: false,
+        hasMoney: false
+    }
+});
+
+var zhangsan = new Programmer({
+    language: 'JavaScript',
+    isGeek: true
+});
+
+console.log(zhangsan.getLanguage());
+console.log(zhangsan.getHasMoney());
+console.log(zhangsan.hasMoney);
+console.dir(zhangsan); 
+```
+
+执行结果如下： 
+
+![classsystem_01](img/classsystem_01.png)
 
 
 
