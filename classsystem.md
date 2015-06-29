@@ -483,3 +483,31 @@ largeClass.code(); // ZhangSan is coding in java!
 `Ext.define` 还提供了定义别名、动态加载、定义向下兼容的类名等多种功能用法，
 不再一一叙述。
 
+## 深入一些
+
+```js
+var Ext = {};
+
+function mkCtor() {
+    function constructor() {
+        return this.constructor.apply(this, arguments) || null;
+    }
+}
+
+Ext.Class = function (Class, data) {
+    return Class;
+};
+
+Ext.ClassManager = {
+    create: function (className, data) {
+        var ctor = mkCtor();
+        data.$className = className;
+        return new Ext.Class(ctor, data);
+    }
+};
+
+Ext.define = function () {
+    return Ext.ClassManager.create.apply(Ext.ClassManager, arguments);
+};
+```
+
