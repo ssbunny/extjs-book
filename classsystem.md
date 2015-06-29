@@ -145,12 +145,10 @@ if (lisi.isProgrammer && lisi.niubility) {
 }
 ```
 
-可以看出，ExtJS 类系统的核心即为**Ext.define**函数，熟悉 Java
+可以看出，ExtJS 类系统的核心即为 **Ext.define** 函数，熟悉 Java
 的开发人员可以将其理解为 ExtJS 的定义类的语法。继承关系则可以通过
-extend 属性指定。
-
-从 4.0+ 版本开始，ExtJS 整个框架都基于 `Ext.define` 来构建，
-除了继承以外，该方法还实现了其它诸多类系统特性，
+extend 属性指定。从 4.0+ 版本开始，ExtJS 整个框架都基于
+`Ext.define` 来构建，除了继承以外，该方法还实现了其它诸多类系统特性，
 让我们通过代码的方式展示一下 `Ext.define` 的用法。
 
 ## Ext.define的用法
@@ -264,9 +262,10 @@ console.log(thinkComputer.brand); // Thinkpad
 ```
 
 关于静态方法，你需要知道：
+
 1. 在statics方法中，`this` 指向类本身;
 2. 在其它成员方法中，`this.statics()` 可以引用到当前类；
-2. statics对象中的属性/方法，不会被 `extend` 或 `mixin`，如有此需求，可使用 `InheritableStatics` .
+3. statics对象中的属性/方法，不会被 `extend` 或 `mixin`，如有此需求，可使用 `InheritableStatics` .
 
 ### 5.Mixins
 
@@ -413,4 +412,75 @@ var Foo = Ext.define(null, {
 
 console.log(new Foo().name); // [ anonymous class ] 
 ```
+
+### 8.单例模式
+
+只需将 `singleton` 属性设置为 `true` 即可： 
+
+```js
+Ext.define('Logger', {
+    singleton: true,
+    log: function(msg) {
+        console.log(msg);
+    }
+});
+```
+
+### 9.覆盖
+
+通过 `override` 属性可以替换掉父类的方法，也可以为其增加新方法
+(详细的用法请参考API文档，毕竟本教程并非为了介绍API文档而作)。
+值得一提的是，它有一些很实用的场景，例如，拆分巨大的类 ： 
+
+```js
+// 在定义巨大的类时，可以只定义一些基础属性config、statics
+// 以及一些基础的成员方法等
+Ext.define('MyLargeClass', {
+    constructor: function (config) {
+        this.initConfig(config);
+    },
+    config: {
+        name: null
+    }
+});
+
+// 将MyLargeClass的方法分类，一部分方法放到part1中
+Ext.define('MyLargeClass.part1', {
+    override: 'MyLargeClass',
+    constructor: function () {
+        this.callParent(arguments);
+    },
+    jump: function () {
+        console.log(this.name + ' jumps!');
+    },
+    code: function () {
+        console.log(this.name + ' is coding in javascript!');
+    }
+});
+
+// 另一部分方法放到part2中
+
+Ext.define('MyLargeClass.part2', {
+    override: 'MyLargeClass',
+    sing: function () {
+        console.log(this.name + ' sings a song!');
+    },
+    // 一般情况下应该避免像code方法这种多次覆盖的现象
+    code: function () {
+        console.log(this.name + ' is coding in java!');
+    }
+});
+
+var largeClass = new MyLargeClass({name: 'ZhangSan'});
+largeClass.jump(); // ZhangSan jumps!
+largeClass.sing(); // ZhangSan sings a song!
+largeClass.code(); // ZhangSan is coding in java! 
+```
+
+实际应用时，当一个类方法特别特别特别多时(巨大的类)，可以进行合理拆分。
+同时，结合动态类加载机制，将不同的部分part1、part2放在不同的JS源文件中，
+主类定义中使用requires引用所有的部分。
+
+`Ext.define` 还提供了定义别名、动态加载、定义向下兼容的类名等多种功能用法，
+不再一一叙述。
 
