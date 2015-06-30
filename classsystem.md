@@ -41,7 +41,7 @@ if (zhangsan.isProgrammer) {
 
 控制台将打印出：
 
-```sh
+```
 ZhangSan codes in java.
 ```
 
@@ -68,10 +68,10 @@ Geek.prototype.superSkill = function () {
 这么一来便可以通过 `superclass` 引用调用并继承父类方法。
 
 如果上面的代码对你来说并不容易理解，那么你可能需要补充一下 JavaScript
-的相关知识。虽然 ExtJS 为我们隐藏了诸多实现细节，但若想有所提高并了解
+的基础知识。虽然 ExtJS 为我们隐藏了诸多实现细节，但若想有所提高并了解
 ExtJS 的工作原理，准确理解以上代码是极为必要的。更多 JavaScript
 面向对象编程的知识，我推荐你阅读
-[MDN文档](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Introduction_to_Object-Oriented_JavaScript) 。
+[MDN相关文档](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Introduction_to_Object-Oriented_JavaScript) 。
 
 接下来构造一个 `Geek` 实例并调用其方法：
 
@@ -295,12 +295,11 @@ new Musician().sing(); // I'm on the highway to hell...
 你当然可以设计一个大而全的类来实现所有功能，如果某一特殊场景中不需要
 “导入导出”功能则通过子类将对应功能入口“弱化”掉。这个设计很糟糕，
 维护这个大类会让人疯狂，尤其面对新的功能扩展时。
-聪明一些的办法则可以通过继承层级划分，在基类中实现“基本功能”并在子类中扩展其它功能。
-然而我们的例子中如何划分子类呢？它有太多可能的功能组合。你肯定已经想到，
+聪明一些的办法则可以通过继承层级划分，在基类中实现“基本功能”并在子类中扩展其它功能。然而我们的例子中如何划分子类呢？它有太多可能的功能组合。你肯定已经想到，
 掺和模式可以解决此类问题。
 
 `mixins` 背后的思想即是通过**聚合**而非继承的方式为某类型扩展行为能力。
-Java 开发人员理应对此极为熟悉。使用 Golang 的开发人员可以将其理解为“结构体嵌入”。
+Java 开发人员理应对此极为熟悉。使用 Golang 的开发人员可以将其理解为结构体的嵌入。
 
 下面展示一个稍复杂的例子，更多的用法希望你通过API文档自行学习：
 
@@ -485,23 +484,148 @@ largeClass.code(); // ZhangSan is coding in java!
 
 ## 深入一些
 
+ExtJS 类系统提供了这么多花哨的功能，怎么实现的呢？
+下面的内容我将带着你一步一步深入学习 ExtJS 类系统的实现过程。
+
+ExtJS 在定义类的时候，基本思路为：
+
+1. 提供一个基类 `Ext.Base`，所有类继承自此，在此类中定义所有类共有的属性(function对象的属性，亦即所谓静态属性)；
+2. 提供 `Ext.Class` 类，完成类定义后的前置处理；
+3. 提供 `Ext.ClassManager` 单例，负责管理框架内的类。Ext.define方法的实际实现也源于此，同时实际的后置处理方法也在此实现；
+4. 提供 `Ext.Loader` 单例，负责类的动态加载。同时，加载相关的前置处理方法在此实现。
+
+动态加载的内容将单独讲解，不在此讨论。
+
+我剥离出实现类定义的**骨干代码**，先来看看：
+
 ```js
 var Ext = {};
 
 function mkCtor() {
-    function constructor() {
+    return function constructor() {
         return this.constructor.apply(this, arguments) || null;
-    }
+    };
 }
 
+Ext.Class = function (Class) {
+    return Class;
+};
+
+Ext.ClassManager = {
+    create: function (className) {
+        var ctor = mkCtor();
+        return new Ext.Class(ctor);
+    }
+};
+
+Ext.define = function () {
+    return Ext.ClassManager.create.apply(Ext.ClassManager, arguments);
+};
+
+console.dir(Ext.define('Foo'));
+```
+
+控制台将打印出：
+
+![classsystem_02](classsystem_02.png)
+
+从代码中可以看出， `Ext.define` 通过调用 `Ext.ClassManager.create` 方法，实际生成的是 `Ext.Class` 的实例，即 `new Ext.Class(ctor);`。而根据 `new` 操作符的特性，当创建 Ext.Class 时实际创建的将是传入的函数对象，即执行 `makeCtor()` 后生成的 **constructor** 函数对象。
+
+于是可以知道，ExtJS 类系统实质上创建的都是 `makeCtor` 函数中的 `constructor` 对象，其内部只是继续调用当前(this)配置中的 constructor 属性所指向的函数，这么做的好处便是：所得到的 constructor 的原生链非常干净，没有其它多余的属性，同时便于在这一过程中为生成的对象增加属性、做预处理等。
+
+明白了以上基础代码结构，现在来加个 `Ext.Base` 类，同时我们实现一个极度简化版的
+`addMembers` 方法(该方法的使用说明参见API文档)和私有属性 `$isClass` ：
+
+```js
+Ext.Base = function () {};
+Ext.Base.$isClass = true;
+Ext.Base.addMembers = function (members) {
+    var i, member;
+    for (i in members) {
+        if (members.hasOwnProperty(i)) {
+            member = members[i];
+            this.prototype[i] = member;
+        }
+    }
+};
+```
+
+接下来改造一下 `Ext.Class` ：
+
+```
 Ext.Class = function (Class, data) {
+    var name;
+    for (name in Ext.Base) {
+        if (Ext.Base.hasOwnProperty(name)) {
+            Class[name] = Ext.Base[name];
+        }
+    }
+    return Class;
+};
+```
+
+执行代码，控制台将打印出：
+
+![classsystem_03](classsystem_03.png)
+
+现在，我们的 `Foo` 类已经获取到 `Ext.Base` 中的方法了。改变打印输出代码，
+来用一下新方法：
+
+```js
+var Foo = Ext.define('Foo');
+Foo.addMembers({
+    name: 'foo name',
+    foo: function () {
+        console.log('I\'m foo');
+    }
+});
+console.dir(Foo);
+```
+
+可以看到结果如下，我们成功地给 `Foo` 增加了原型方法：
+
+![classsystem_04](classsystem_04.png)
+
+现在把 `addMembers` 放到我们的框架代码内部调用，并增加 `$className` 属性，
+以此表示我们已经有能力按需要扩展所定义的类的属性，
+于是得到如下**相对完整的代码** ：
+
+```js
+var Ext = {};
+
+function mkCtor() {
+    return function constructor() {
+        return this.constructor.apply(this, arguments) || null;
+    };
+}
+
+Ext.Base = function () {};
+Ext.Base.$isClass = true;
+Ext.Base.addMembers = function (members) {
+    var i, member;
+    for (i in members) {
+        if (members.hasOwnProperty(i)) {
+            member = members[i];
+            this.prototype[i] = member;
+        }
+    }
+};
+
+Ext.Class = function (Class, data) {
+    var name;
+    for (name in Ext.Base) {
+        if (Ext.Base.hasOwnProperty(name)) {
+            Class[name] = Ext.Base[name];
+        }
+    }
+    Class.addMembers(data);
     return Class;
 };
 
 Ext.ClassManager = {
     create: function (className, data) {
         var ctor = mkCtor();
-        data.$className = className;
+        data && (data.$className = className);
         return new Ext.Class(ctor, data);
     }
 };
@@ -509,5 +633,15 @@ Ext.ClassManager = {
 Ext.define = function () {
     return Ext.ClassManager.create.apply(Ext.ClassManager, arguments);
 };
+
+console.dir(Ext.define('Foo', {
+    name: 'foo name',
+    foo: function () {
+        console.log('I\'m foo');
+    }
+}));
 ```
 
+结果如我们所愿：
+
+![classsystem_05](classsystem_05.png)
