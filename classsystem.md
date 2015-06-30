@@ -527,7 +527,7 @@ console.dir(Ext.define('Foo'));
 
 控制台将打印出：
 
-![classsystem_02](classsystem_02.png)
+![classsystem_02](img/classsystem_02.png)
 
 从代码中可以看出， `Ext.define` 通过调用 `Ext.ClassManager.create` 方法，实际生成的是 `Ext.Class` 的实例，即 `new Ext.Class(ctor);`。而根据 `new` 操作符的特性，当创建 Ext.Class 时实际创建的将是传入的函数对象，即执行 `makeCtor()` 后生成的 **constructor** 函数对象。
 
@@ -566,7 +566,7 @@ Ext.Class = function (Class, data) {
 
 执行代码，控制台将打印出：
 
-![classsystem_03](classsystem_03.png)
+![classsystem_03](img/classsystem_03.png)
 
 现在，我们的 `Foo` 类已经获取到 `Ext.Base` 中的方法了。改变打印输出代码，
 来用一下新方法：
@@ -584,7 +584,7 @@ console.dir(Foo);
 
 可以看到结果如下，我们成功地给 `Foo` 增加了原型方法：
 
-![classsystem_04](classsystem_04.png)
+![classsystem_04](img/classsystem_04.png)
 
 现在把 `addMembers` 放到我们的框架代码内部调用，并增加 `$className` 属性，
 以此表示我们已经有能力按需要扩展所定义的类的属性，
@@ -644,4 +644,4 @@ console.dir(Ext.define('Foo', {
 
 结果如我们所愿：
 
-![classsystem_05](classsystem_05.png)
+![classsystem_05](img/classsystem_05.png)
