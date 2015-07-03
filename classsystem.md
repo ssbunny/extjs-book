@@ -1,5 +1,7 @@
 # 类系统
 
+*[本章内容只针对 ExtJS 4.x 和 ExtJS 5.x 版本]*
+
 JavaScript 是一门富有表现力的编程语言，它既可以进行面向对象编程(OOP)，
 也可以进行函数式编程(FP)。函数是 JavaScript 的一等公民。
 面向对象编程风格相对要简单许多，这也是 ExtJS 的选择。
@@ -552,7 +554,7 @@ Ext.Base.addMembers = function (members) {
 
 接下来改造一下 `Ext.Class` ：
 
-```
+```js
 Ext.Class = function (Class, data) {
     var name;
     for (name in Ext.Base) {
@@ -618,14 +620,14 @@ Ext.Class = function (Class, data) {
             Class[name] = Ext.Base[name];
         }
     }
-    Class.addMembers(data);
+    Class.addMembers(data);  //  <-----------
     return Class;
 };
 
 Ext.ClassManager = {
     create: function (className, data) {
         var ctor = mkCtor();
-        data && (data.$className = className);
+        data && (data.$className = className);  //  <-----------
         return new Ext.Class(ctor, data);
     }
 };
@@ -645,3 +647,140 @@ console.dir(Ext.define('Foo', {
 结果如我们所愿：
 
 ![classsystem_05](img/classsystem_05.png)
+
+### 预处理器
+
+现在我们已经有了 ExtJS 类系统基本的代码结构，并能为生成的类提供附加的属性。
+那么，`Ext.define` 中诸多的功能特性又是怎么实现的呢，例如 `extend` 、
+`statics`、`mixins` 等？答案就是：预处理器。
+
+ExtJS 的预处理器分为 **前置处理器** (在类构造前做一些事情)和 **后置处理器** (在类构造成功后正式使用前做一些事情)。前置处理器放在 `Ext.Class` 对象中，后置处理器放在 `Ext.ClassManager` 对象中。如果你熟悉 Nodejs 的 Express
+框架或是 Python 的 django 框架，ExtJS 预处理器的设计理念对你来说 so easy,
+来看看吧。
+
+我们先来自己实现它。预处理器至少需要三部分组成：
+
+1. 盛放处理器的容器
+2. 注册处理器的方法
+3. 执行处理器具体处理过程的方法
+
+先来解决第一个问题：我们用数组 `[]` 表示容器，用形如
+`{name: '处理器名称', fn: 执行的处理方法}` 的对象表示一个处理器。容器就分别叫做
+`preprocessors` 和 `postprocessors` 吧。之后，注册方法就对应地叫做
+`registerPreprocessor` 和 `registerPostprocessor` ;执行方法叫
+`doPreprocessor` 和 `doPostprocessor` 。
+
+我说了这么多废话，你一看前置处理器的骨干代码，发现“原来如此简单”：
+
+```js
+Ext.Class.preprocessors = [];
+Ext.Class.registerPreprocessor = function (name, fn) {
+    Ext.Class.preprocessors.push({
+        name: name,
+        fn: fn
+    });
+};
+Ext.Class.doPreprocessor = function () {
+    var i, len,
+        pre = Ext.Class.preprocessors;
+    for (i = 0, len = pre.length; i < len; ++i) {
+        pre[i].fn.call(Ext.Class);
+    }
+};
+```
+
+我们在 `ExtClass` 中加个 `preprocessors` 数组，注册方法是往数组里放处理器，执行方法则是把数组里的所有处理器取出来调用一下。就是这么简单！对应的后置处理器完全相同：
+
+```js
+Ext.ClassManager.postprocessors = [];
+Ext.ClassManager.registerPostprocessor = function (name, fn) {
+    Ext.ClassManager.postprocessors.push({
+        name: name,
+        fn: fn
+    });
+};  
+Ext.ClassManager.doPostprocessor = function () {
+    var i, len,
+        post = Ext.ClassManager.postprocessors;
+    for (i = 0, len = post.length; i < len; ++i) {
+        post[i].fn.call(Ext.Class);
+    }
+};
+```
+
+处理器有了，调用一下吧。现在改造 `Ext.Class` ，把已有的代码移到 `create` 方法中，并为其增加 `onCreated` 参数，以便回调后置处理器：
+
+```js
+Ext.Class = function (Class, data, onCreated) {
+    Ext.Class.create(Class, data);
+    Ext.Class.doPreprocessor(Class, data);      // <----------
+    Class.addMembers(data);
+    onCreated.call(Class, Class);               // <----------
+    return Class;
+};
+
+Ext.Class.create = function (Class, data) {
+    var name;
+    for (name in Ext.Base) {
+        if (Ext.Base.hasOwnProperty(name)) {
+            Class[name] = Ext.Base[name];
+        }
+    }
+};
+```
+
+相应地，加上后置回调函数并在其中调用后置处理器的执行方法：
+
+```js
+Ext.ClassManager.create = function (className, data) {
+    var ctor = mkCtor();
+    data && (data.$className = className);
+    return new Ext.Class(ctor, data, function () {
+        Ext.ClassManager.doPostprocessor();   // <----------
+    });
+};
+```
+
+就是这么简单，快注册几个处理器试试吧：
+
+```js
+Ext.Class.registerPreprocessor('jump', function () {
+    console.log('I can jump high!');
+});
+Ext.Class.registerPreprocessor('swim', function () {
+    console.log('I can swim fast!');
+});
+Ext.ClassManager.registerPostprocessor('rest', function () {
+    console.log('I have to take a break!');
+});
+
+Ext.define('Qiang');
+```
+
+此时可以看到，当我们定义一个新类( `'Qiang'` )时，各预处理器被执行：
+
+![classsystem_06](img/classsystem_06.png)
+
+其实，ExtJS 实现前置处理器和后置处理器的过程是非常复杂的，
+不过思路却极为简单，正如我们刚刚看到的。在我们的代码基础上，还可以增加很多辅助方法，例如，调整已注册的处理器顺序、增加更多的钩子方法、注册事件并触发等等。事实上 ExtJS 正是这么做的，它还为我们提供了很多优秀的处理器，不像我们的示例代码只是粗糙的
+`console.log` ，它们非常强大：
+
+![classsystem_07](img/classsystem_07.png)
+
+
+## 就此结束了吗？
+
+还不够，我们应该只处理用户指定的处理器，如下面的调用只执行 `swim` 处理器：
+
+```js
+Ext.define('Swimmer', {
+    swim: 'very fast!'
+});
+```
+
+另外，`Ext.define` 创建出的类，只是通过字符串静态指定的类名，我们还应该把它放入全局变量中，同时为其处理好命名空间问题，以便可以直接调用它。
+
+还有一大堆需要实现的 API 方法，还有无数的细节需要处理。
+
+我对 ExtJS 类系统的讲解结束了，而我希望对你仅仅是开始，希望我的分析讲解可以帮你更深入地理解 ExtJS 类系统，更便于你理解它的源码，更便于你使用、扩展它。
+
