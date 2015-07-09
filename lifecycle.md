@@ -398,7 +398,7 @@ ExtJS 提供了相当丰富的API，丰富到让人觉得混乱。从代码功�
 ```js
 Ext.define('MyPanel', {
     initComponent: function () {
-        this.on('beforedestroy', this. myBeforeDestroy);
+        this.on('beforedestroy', this.myBeforeDestroy);
     },
     
     ...
