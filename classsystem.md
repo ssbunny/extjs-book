@@ -228,7 +228,7 @@ console.dir(zhangsan);
 
 执行结果如下： 
 
-![classsystem_01](img/classsystem_01.png)
+<img src="img/classsystem_01.png" width="300px"/>
 
 需要*注意*的是，如果不是继承自现有组件，而是自己定义新类，
 需要在 `constructor` 中明确调用 `initConfig()` 方法。 
@@ -529,7 +529,7 @@ console.dir(Ext.define('Foo'));
 
 控制台将打印出：
 
-![classsystem_02](img/classsystem_02.png)
+<img src="img/classsystem_02.png" width="300px"/>
 
 从代码中可以看出， `Ext.define` 通过调用 `Ext.ClassManager.create` 方法，实际生成的是 `Ext.Class` 的实例，即 `new Ext.Class(ctor);`。而根据 `new` 操作符的特性，当创建 Ext.Class 时实际创建的将是传入的函数对象，即执行 `makeCtor()` 后生成的 **constructor** 函数对象。
 
@@ -568,7 +568,7 @@ Ext.Class = function (Class, data) {
 
 执行代码，控制台将打印出：
 
-![classsystem_03](img/classsystem_03.png)
+<img src="img/classsystem_03.png" width="300px"/>
 
 现在，我们的 `Foo` 类已经获取到 `Ext.Base` 中的方法了。改变打印输出代码，
 来用一下新方法：
@@ -586,7 +586,8 @@ console.dir(Foo);
 
 可以看到结果如下，我们成功地给 `Foo` 增加了原型方法：
 
-![classsystem_04](img/classsystem_04.png)
+
+<img src="img/classsystem_04.png" width="300px"/>
 
 现在把 `addMembers` 放到我们的框架代码内部调用，并增加 `$className` 属性，
 以此表示我们已经有能力按需要扩展所定义的类的属性，
@@ -646,7 +647,7 @@ console.dir(Ext.define('Foo', {
 
 结果如我们所愿：
 
-![classsystem_05](img/classsystem_05.png)
+<img src="img/classsystem_05.png" width="300px"/>
 
 ### 预处理器
 
@@ -759,13 +760,13 @@ Ext.define('Qiang');
 
 此时可以看到，当我们定义一个新类( `'Qiang'` )时，各预处理器被执行：
 
-![classsystem_06](img/classsystem_06.png)
+<img src="img/classsystem_06.png" width="300px"/>
 
 其实，ExtJS 实现前置处理器和后置处理器的过程是非常复杂的，
 不过思路却极为简单，正如我们刚刚看到的。在我们的代码基础上，还可以增加很多辅助方法，例如，调整已注册的处理器顺序、增加更多的钩子方法、注册事件并触发等等。事实上 ExtJS 正是这么做的，它还为我们提供了很多优秀的处理器，不像我们的示例代码只是粗糙的
 `console.log` ，它们非常强大，它们正是之前介绍的 `Ext.define` 诸多功能的实际实现：
 
-![classsystem_07](img/classsystem_07.png)
+<img src="img/classsystem_07.png" width="300px"/>
 
 
 ## 就此结束了吗？
